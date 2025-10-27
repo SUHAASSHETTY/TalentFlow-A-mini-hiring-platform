@@ -3,6 +3,14 @@ import { db } from "../extendedDB/jobstore"
 
 export async function JobServer(){
 
+    function paginationIndex(pageSize,pageNumber){
+        if(pageNumber==1){
+            return [0,pageSize];
+        }else{
+            return [pageSize*(pageNumber-1)-1,pageSize*(pageNumber)];
+        }
+    }
+
     return new Server({
         routes(){
             this.namespace='api'
@@ -20,11 +28,44 @@ export async function JobServer(){
             })
 
             this.get('/jobs',async (schema,request)=>{
-                let status = request.queryParams.status;
+                let queryParams = request.queryParams;
+                const {status:statusArray,tags:tagsArray,pageSize,pageNumber,sort} = request.queryParams
                 try{
-                    let jobs = await db.jobs.where('status').equals(status).toArray();
-                    console.log('jobs in mirage',jobs)
-                    return jobs;
+                    let jobs;
+                    if(tagsArray && tagsArray.length){
+                        let jobsRaw=await db.jobs.where('tags').anyOf(tagsArray).toArray();
+                        // console.log("before set:",jobsRaw);
+                        jobs = Array.from(new Map(jobsRaw.map(job => [job.jobid, job])).values()); //dexie gives duplicate records if the records matches more than one condition
+                        jobs.filter(job => statusArray.includes(job.status))
+                        // console.log("after set:",jobs)
+                    }else{
+                        jobs = await db.jobs.where('status').anyOf(statusArray).toArray();
+                    }
+
+                    //sort 
+                    if(sort=='asc'){
+                        jobs.sort((a,b)=>a.order-b.order);
+                    }else if(sort=='desc'){
+                        jobs.sort((a,b)=>b.order-a.order);
+                    }
+
+                    let response = {
+                        'maxPageNumber':Math.ceil(jobs.length/pageSize)
+                    }
+
+                    //pagination
+                    console.log(jobs.length,pageSize,jobs.length/pageSize)
+                    if(pageNumber>Math.ceil(jobs.length/pageSize)){
+                        console.log("trying to get a page whose pageNumber doesn't exist for query")
+                        response['records'] = [];
+                    }else{
+                        console.log('jobs in mirage',jobs)
+                        let [startIndex,endIndex] = paginationIndex(pageSize,pageNumber)
+                        response['records'] = jobs.slice(startIndex,endIndex);
+                    }
+                    
+                    return response;
+                    
                 }catch(err){
                     console.log("error when trying to get all jobs: ",err)
                 }          

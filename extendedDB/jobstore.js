@@ -5,7 +5,7 @@ const databaseName = 'talentmania'
 export const db = new Dexie(databaseName);
 
 db.version(1).stores({
-    jobs: '++jobid,title'
+    jobs: '++jobid,title,status,order,*tags'
 })
 
 export const jobs = [
@@ -50,6 +50,8 @@ export async function seedJobs(){
     try{
         if(await db.jobs.count()==0){
             await db.jobs.bulkAdd(jobs)
+        }else{
+            console.log("already seeded the db");
         }
     }catch(err){
         console.log("error when seeding job ", err)

@@ -15,6 +15,9 @@ export function Login(){
                 <Link className="border w-fit rounded-xl px-3 py-1" to={'/jobs'} onClick={()=>{setRole('recruiter')}}>
                     Employer / Recruiter
                 </Link>
+                <Link className="border w-fit rounded-xl px-3 py-1" to={'/candidates'}>
+                    Candidates
+                </Link>
             </div>
         </div>
     )

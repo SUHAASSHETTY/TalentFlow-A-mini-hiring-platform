@@ -4,11 +4,13 @@ import {BrowserRouter} from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import { RoleContextWrapper } from './context/roleContext.jsx'
-import { seedJobs } from '../extendedDB/jobstore.js'
+import { seedCandidates, seedHRs, seedJobs } from '../extendedDB/jobstore.js'
 
 
 (async() => {
   await seedJobs();
+  await seedHRs();
+  await seedCandidates();
   createRoot(document.getElementById('root')).render(
     <StrictMode>
       <BrowserRouter>

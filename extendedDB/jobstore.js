@@ -1,11 +1,14 @@
 import Dexie from 'dexie'
+import {faker} from '@faker-js/faker'
 
 const databaseName = 'talentmania'
 
 export const db = new Dexie(databaseName);
 
 db.version(1).stores({
-    jobs: '++jobid,title,status,order,*tags'
+    jobs: '++jobid,title,status,order,*tags',
+    candidates: '++id,name,email,stage',
+    hrs: '++id,name',
 })
 
 export const jobs = [
@@ -48,12 +51,123 @@ export const jobs = [
 
 export async function seedJobs(){
     try{
+        // await db.jobs.clear();
         if(await db.jobs.count()==0){
             await db.jobs.bulkAdd(jobs)
         }else{
-            console.log("already seeded the db");
+            console.log("already seeded the jobs db");
         }
     }catch(err){
         console.log("error when seeding job ", err)
     }
 }
+
+export async function seedHRs(){
+    try{
+        if(await db.hrs.count()==0){
+            let hrList = [];
+            for(let i=1;i<=50;i++){
+                hrList.push({
+                    name: faker.person.fullName(),
+                })
+            }
+            await db.hrs.bulkAdd(hrList);
+        }else{
+            console.log("Already seeded the hrs DB");
+        }
+    }catch(err){
+        console.log("error when seeding HRs ", err);
+    }
+}
+
+export async function seedCandidates() {
+    const stages = ["applied", "screen", "tech", "offer", "hired", "rejected"];
+    const noteTemplates = [
+        "Please look into this candidate @",
+        "Do you think we should hire @",
+        "Let’s move forward with this one, @",
+        "Need a quick feedback from @",
+        "Can you review this profile, @",
+        "Looks promising, check with @",
+        "Pending decision, discuss with @"
+    ];
+
+    try {
+        // await db.candidates.clear();
+        if (await db.candidates.count() === 0) {
+            const hrs = await db.hrs.toArray();
+
+            if (hrs.length === 0) {
+                console.warn("No HRs found in db.hrs — please seed HRs before seeding candidates.");
+                return;
+            }
+
+            const users = [];
+            const now = new Date();
+
+            const formatDate = (date) => {
+                const d = String(date.getDate()).padStart(2, "0");
+                const m = String(date.getMonth() + 1).padStart(2, "0");
+                const y = date.getFullYear();
+                return `${d}-${m}-${y}`;
+            };
+
+            for (let i = 0; i < 1000; i++) {
+                const stage = stages[Math.floor(Math.random() * stages.length)];
+                const timeline = {};
+
+                let date = new Date(now.getTime() - faker.number.int({ min: 20, max: 90 }) * 24 * 60 * 60 * 1000);
+
+                const advanceDate = () => {
+                    date = new Date(date.getTime() + faker.number.int({ min: 2, max: 7 }) * 24 * 60 * 60 * 1000);
+                    return formatDate(date);
+                };
+
+                if (stage === "rejected") {
+                    const progressStages = ["applied", "screen", "tech", "offer"];
+                    const reachedIndex = faker.number.int({ min: 0, max: progressStages.length - 1 });
+
+                    for (let j = 0; j <= reachedIndex; j++) {
+                        timeline[progressStages[j]] = advanceDate();
+                    }
+
+                    timeline["rejected"] = advanceDate();
+                } else {
+                    const reachedIndex = stages.indexOf(stage);
+                    for (let j = 0; j <= reachedIndex; j++) {
+                        timeline[stages[j]] = advanceDate();
+                    }
+                }
+
+                
+                const hr = faker.helpers.arrayElement(hrs);
+                const noteTemplate = faker.helpers.arrayElement(noteTemplates);
+                let notes;
+                if(Math.random() < 0.3) {
+                    notes = `${noteTemplate}${hr.name}`;
+                }else{
+                    notes = '';
+                }
+
+                users.push({
+                    name: faker.person.fullName(),
+                    email: faker.internet.email(),
+                    phone: faker.phone.number(),
+                    stage,
+                    timeline,
+                    notes
+                });
+            }
+
+            await db.candidates.bulkAdd(users);
+            console.log("Candidates seeded with notes containing @HRName and chronologically ordered timelines (dd-mm-yyyy)");
+        } else {
+            console.log("Already seeded the candidates DB");
+        }
+    } catch (err) {
+        console.error("Error while seeding the DB:", err);
+    }
+}
+
+
+

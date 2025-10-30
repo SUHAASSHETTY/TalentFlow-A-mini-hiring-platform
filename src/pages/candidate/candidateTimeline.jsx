@@ -2,9 +2,9 @@ import axios from "axios"
 import { use, useEffect, useRef, useState } from "react"
 import { useParams } from "react-router-dom"
 import { DndContext,closestCenter } from "@dnd-kit/core";
-import { NormalStage } from "../../components/normalStage";
-import { DraggableProfile } from "../../components/draggableProfile";
-import { DroppableStage } from "../../components/droppableStage";
+import { NormalStage } from "../../components/candidates/normalStage";
+import { DraggableProfile } from "../../components/candidates/draggableProfile";
+import { DroppableStage } from "../../components/candidates/droppableStage";
 
 export function CandidateTimeline(){
     const candidateId = useParams().id;

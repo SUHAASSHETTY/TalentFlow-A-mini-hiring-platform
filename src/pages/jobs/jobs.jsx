@@ -1,19 +1,35 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRole } from "../../context/useRole"
 import axios from 'axios'
 import { Link } from "react-router-dom";
+// import { JobSort } from "../../components/jobs/jobSort";
+import {
+  DndContext,closestCenter,KeyboardSensor,PointerSensor,useSensor,useSensors,
+  TouchSensor} from '@dnd-kit/core';
+import {SortableContext,arrayMove,verticalListSortingStrategy,sortableKeyboardCoordinates} from '@dnd-kit/sortable'
+import { JobRow } from '../../components/jobs/jobRow.jsx'
 
+let reorderId = 0;
 export function Jobs(){
     const {role,setRole} = useRole();
     const [jobs,setJobs] = useState([]);
-
     const [sort,setSort] = useState('asc');
     const [activeJobs,setActiveJobs] = useState(true);
-    const [archivedJobs,setArchivedJobs] = useState(false);
+    const [archivedJobs,setArchivedJobs] = useState(true);
     const [maxPageNumber,setMaxPageNumber] = useState(4);
     const [pageSize,setPageSize] = useState(10);
     const [pageNumber,setPageNumber] = useState(1);
     const [tags,setTags] = useState([]);
+    const waitingReorders = useRef([]);
+    const pendingReorders = useRef([]);
+    const previousJobs = useRef([]);
+    const backendSyncJobs = useRef(null);
+
+    const sensors = useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor),
+        useSensor(TouchSensor),
+    );
 
     let pageNumbers = [];
     for(let i=1;i<=maxPageNumber;i++){pageNumbers.push(i)}
@@ -39,6 +55,7 @@ export function Jobs(){
     }
 
     function handleStatusClick(jobid,status){
+        console.log("handle status click",jobid,status)
         let newStatus = '';
         if(status=='archived'){
             newStatus='active'
@@ -63,6 +80,7 @@ export function Jobs(){
     }
 
     function handleTagClick(tag){
+        console.log("clicked on",tag)
         if(tags.includes(tag)){
             setTags(tags.filter(eachtag => eachtag!=tag))
         }else{
@@ -84,6 +102,106 @@ export function Jobs(){
             statusArray.push('archived')
         }
         return statusArray;
+    }
+
+    function proceedReorder(op){
+
+        pendingReorders.current.push(op);
+        axios.patch(`/api/jobs/${op.jobid}/reorder`,{
+            'fromOrder':op.from+1,
+            'toOrder':op.to+1,
+        })
+        .then(res => {
+            console.log("successfully reordering:",op.reorderId)
+            previousJobs.current = op.proposed;
+
+            // call the next element in waiting array
+            if(waitingReorders.current.length){
+                let nextOp = waitingReorders.current.shift();
+                console.log("calling a next reorder from WAITING REORDERS after successful finish:",nextOp);
+                pendingReorders.current = pendingReorders.current.filter(pendingop => pendingop.reorderId!=op.reorderId);
+                proceedReorder(nextOp);
+            }else{
+                //remove the completed one from pendingReorders and update the backendSyncJobs
+                pendingReorders.current = pendingReorders.current.filter(pendingop => pendingop.reorderId!=op.reorderId);
+            }
+
+        })
+        .catch(err => {
+            alert("error when updating op");
+            console.log("error when trying to reorder jobs", err,op.previous);
+            previousJobs.current = [];
+            setJobs(op.previous);
+
+            // remove the op from pendingReorders
+            pendingReorders.current = pendingReorders.current.filter(pendingop => pendingop.reorderId!=op.reorderId);
+
+            //remove the waitingReorders which directly or indirectly overlap with this
+            waitingReorders.current = [];
+
+            // rollback to previous state
+        })
+    }
+
+    function jobsCopier(){
+        let copy = [];
+        jobs.forEach(job => {
+            copy.push(structuredClone(job));
+        });
+        return copy;
+    }
+
+    function handleDragEnd(event) {       
+        
+        const { active, over } = event;
+        
+        if(!event.over||active.id==over.id) return;
+        
+        console.log("drag end event:", event.active.id, event.over.id);
+        
+        let oldIndex;
+        let newIndex;
+        if(previousJobs.current.length==0){
+            console.log("previousJobs is still empty")
+            oldIndex = jobs.findIndex((job) => job.jobid === active.id);
+            newIndex = jobs.findIndex((job) => job.jobid === over.id);
+        }else{
+            console.log("previousJobs is not empty")
+            oldIndex = previousJobs.current.findIndex((job) => job.jobid === active.id);
+            newIndex = previousJobs.current.findIndex((job) => job.jobid === over.id);
+        }
+        
+        // console.log("moved_array ",arrayMove(jobs, oldIndex, newIndex));
+        console.log("oldIndex: ",oldIndex," newIndex:",newIndex);
+
+        let updatedJobs;
+        let jobsCopy = jobsCopier();
+        setJobs((prevJobs) => {
+            updatedJobs = arrayMove(prevJobs, oldIndex, newIndex);
+            return updatedJobs;
+        });
+        
+        console.log("event sort : old and new job ,",jobs[oldIndex].title,jobs[newIndex].title);
+
+        let op = {
+            'reorderId':reorderId++,
+            'jobid':active.id,
+            'from':oldIndex,
+            'to':newIndex,
+            'previous':previousJobs.current.length?previousJobs.current:jobsCopy,
+            'proposed':updatedJobs,
+        }
+
+        // check the pendingReorders
+        if(pendingReorders.current.length>0){
+            console.log("pendingOrders is not empty and adding op to waiting order",op.reorderId)            
+            waitingReorders.current.push(op);
+        }else{    
+            console.log("empty pending array and proceeding to call")     //empty pendingArray 
+            // call the api 
+            proceedReorder(op);
+        }
+
     }
 
     useEffect(()=>{
@@ -140,34 +258,43 @@ export function Jobs(){
                     <div className="flex flex-wrap gap-1">
                         {tags.map(selectedTag => {
                             return(
-                                <div className="bg-blue-400 pl-3 pr-1 py-[1px] text-white rounded-xl flex gap-2 items-center">
+                                <div className="bg-blue-400 pl-3 pr-1 py-[1px] text-white rounded-xl flex gap-2 items-center" key={selectedTag}>
                                     <p>{selectedTag}</p>
                                     <button onClick={()=>{handleTagCancel(selectedTag)}}><img src="/close.png" width={30} height={10} /></button>
                                 </div>
                             )
                         })}
                     </div>
+                        
 
-                    <div className="flex gap-2 flex-wrap items-center justify-center w-[100%]">
+                    
+
+                    <select onChange={(e)=>{
+                        handleTagClick(e.target.value)
+                    }}>
+                        <option value="select tags">--Select tags--</option>
                         {
-                            allTags.map(tag => {
+                            allTags.filter(tag => !tags.includes(tag)).map(tag => {
                                 return(
-                                    <div className="flex gap-2">
-                                        <label htmlFor="">{tag}</label>
-                                        <input type="checkbox" checked={tags.includes(tag)} onChange={(e)=>{handleTagClick(tag)}} className="border"/>
-                                    </div>
+                                    <option className="flex gap-2" key={tag}>
+                                        {tag}
+                                    </option>
                                 )
                             }
                         )}
+                    </select>
+
+                    
+
+                    <div className="flex gap-2 flex-wrap items-center justify-center w-[100%]">
+                        
                     </div>
                 </div>
-            
-                
 
 
             </div>
         
-            <div className="flex flex-col items-center justify-center self-start w-[80%]">
+            <div className="flex flex-col items-center justify-center self-start w-[80%] mb-20">
                 <h1>Jobs</h1>
                 {
                     role=='recruiter'
@@ -183,28 +310,27 @@ export function Jobs(){
                     <input type="number" min={1} className="border w-[45px] pl-2 rounded-[5px]" id="pageSize" value={pageSize} onChange={(e)=>{setPageSize(e.target.value)}}/>
                 </div>
 
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                
+                    <SortableContext items={jobs.map(job => job.jobid)} strategy={verticalListSortingStrategy}>   
+                        <ul className="flex flex-col gap-7 border p-5 w-[80%] rounded-xl my-6 items-center">
+                            {
+                                jobs.length
+                                ?jobs.map(job => {
+                                    return(
+                                        <JobRow key={job.jobid} job={job} handleStatusClickFunction={handleStatusClick}/>
+                                    )
+                                })
+                                :<div>
+                                    No jobs with given filters exist.Try changing the filters to view jobs.
+                                </div>
+                            }
+                        </ul>
+                    </SortableContext>
+        
+                </DndContext>
 
-                <ul>
-                    {jobs.length
-                    ?jobs.map(job => {
-                        // console.log(job);
-                        return(
-                            <div key={job.jobid} className="flex gap-5">
-                                <li className="flex gap-3 items-center justify-center">
-                                    <p>{job.title}</p>
-                                    <div>{job.tags.join(', ')}</div>
-                                    <button onClick={()=>{handleStatusClick(job.jobid,job.status)}}>{job.status=='archived'?'Unarchive':'Archive'}</button>
-                                </li>     
-                                <Link to={`/editjob/${job.jobid}`}>Edit</Link>
-                            </div>
-                        )
-                    })
-                    :<div>
-                        No jobs with given filters exist.Try changing the filters to view jobs.
-                    </div>
-                    }
-                </ul>
-
+                
                 <div className="flex gap-2">
                     {
                         pageNumbers.map(pgNo=>{

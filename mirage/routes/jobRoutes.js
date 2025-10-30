@@ -1,3 +1,4 @@
+import { Response } from "miragejs";
 import { db } from "../../extendedDB/jobstore";
 
 function paginationIndex(pageSize,pageNumber){
@@ -23,7 +24,6 @@ export default function JobRoutes(server){
     })
 
     server.get('/jobs',async (schema,request)=>{
-        let queryParams = request.queryParams;
         const {status:statusArray,tags:tagsArray,pageSize,pageNumber,sort} = request.queryParams
         try{
             let jobs;
@@ -58,7 +58,7 @@ export default function JobRoutes(server){
                 let [startIndex,endIndex] = paginationIndex(pageSize,pageNumber)
                 response['records'] = jobs.slice(startIndex,endIndex);
             }
-            
+            console.log('jobs in backend:',jobs)
             return response;
             
         }catch(err){
@@ -83,4 +83,40 @@ export default function JobRoutes(server){
         updatedJob['jobid']=updateJobId;
         return updatedJob
     })
+
+    server.patch("/jobs/:id/reorder", async(schema, request) => {
+    if (Math.random() < 0.05){
+        return new Response(500, {}, { error: "Reorder failed" });
+    }
+        const id = Number(request.params.id);
+        let { fromOrder, toOrder } = JSON.parse(request.requestBody);
+        // const movedJob = await db.jobs.get(id);
+        const normaljobs = await db.jobs.orderBy('order').toArray();
+        const allJobs = await db.jobs.orderBy('order').toArray();
+
+        
+        console.log("normal sorted jobs:",normaljobs);
+        let [movedJob] = allJobs.splice(fromOrder-1, 1);
+        // console.log("alljobs after removing one item:",allJobs)
+        if(toOrder>fromOrder){
+            allJobs.splice(toOrder-1,0,movedJob)
+        }else{
+            allJobs.splice(toOrder-1,0,movedJob)
+        }  
+        console.log("alljobs before:",allJobs)
+        
+        for(let i=0;i<allJobs.length;i++){
+            try{
+                await db.jobs.update(Number(allJobs[i]['jobid']),{'order':i+1})
+            }catch(err){
+                console.log("error when updating",i,allJobs[i]['jobid'],Number(allJobs[i]['jobid']));
+            }
+        }
+
+        const updatedJob = await db.jobs.get(id);
+        return updatedJob;
+    },{
+        timing:100*(30+(Math.ceil(Math.random()*5)))
+    });
+
 }

@@ -1,7 +1,7 @@
 import axios from "axios"
 import {List} from "react-window"
 import { useEffect, useState } from "react"
-import { CandidateRow } from "../../components/candidateRow";
+import { CandidateRow } from "../../components/candidates/candidateRow";
 
 export function Candidates(){
     const [candidates, setCandidates] = useState([]);

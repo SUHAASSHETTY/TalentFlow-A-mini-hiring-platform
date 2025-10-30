@@ -51,6 +51,7 @@ export const jobs = [
 
 export async function seedJobs(){
     try{
+        // await db.jobs.clear();
         if(await db.jobs.count()==0){
             await db.jobs.bulkAdd(jobs)
         }else{

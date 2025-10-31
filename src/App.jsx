@@ -3,10 +3,14 @@ import { Route, Routes } from 'react-router-dom'
 import { JobServer } from '../mirage/jobserver'
 import { Login } from './pages/login';
 import { Jobs } from './pages/jobs/jobs';
+import {JobEdit} from './pages/jobs/jobedit'
 import { JobAdd } from './pages/jobs/jobadd';
-import { JobEdit } from './pages/jobs/jobedit';
 import { Candidates } from './pages/candidate/candidates';
 import { CandidateTimeline } from './pages/candidate/candidateTimeline';
+import { AssessmentBuilderPage } from './pages/assessment/AssessmentBuilderPage';
+import { AssessmentRuntimePage } from './pages/assessment/AssessmentRuntimePage';
+import AssessmentBuilderDemo from './components/assessment/AssessmentBuilderDemo';
+
 
 
 
@@ -21,6 +25,11 @@ function App() {
         <Route path='/editjob/:id' element={<JobEdit/>}/>
         <Route path='/candidates' element={<Candidates/>}/>
         <Route path='/candidates/:id' element={<CandidateTimeline/>}/>
+
+        <Route path='/assessments' element={<AssessmentBuilderDemo/>}/>
+        <Route path='/assessments/:jobId' element={<AssessmentBuilderPage />} />
+        <Route path='/assessments/:jobId/fill/:candidateId' element={<AssessmentRuntimePage />} />
+
       </Routes>
     </>
   )

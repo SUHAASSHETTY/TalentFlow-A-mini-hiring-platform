@@ -1,15 +1,89 @@
-import Dexie from 'dexie'
-import {faker} from '@faker-js/faker'
+// extendedDB/jobstore.js
+import Dexie from 'dexie';
+import { faker } from '@faker-js/faker';
 
-const databaseName = 'talentmania'
+const databaseName = 'talentmania';
 
 export const db = new Dexie(databaseName);
 
 db.version(1).stores({
-    jobs: '++jobid,title,status,order,*tags',
-    candidates: '++id,name,email,stage',
-    hrs: '++id,name',
-})
+  jobs: '++jobid,title,status,order,*tags',
+  candidates: '++id,name,email,stage',
+  hrs: '++id,name',
+  assessments: '++id,jobId,title,updatedAt', // builder definitions
+  assessmentResponses: '++id,jobId,candidateId,submittedAt' // responses
+});
+
+export async function seedAssessments() {
+  try {
+    if (await db.assessments.count() > 0) {
+      console.log('assessments already seeded');
+      return;
+    }
+
+    // Create some example assessments for a few job IDs (1..5). Real seed: create for job.jobid
+    const sampleAssessments = [];
+    const now = new Date().toISOString();
+
+    for (let jobId = 1; jobId <= 5; jobId++) {
+      const sections = [
+        {
+          id: `sec-${jobId}-1`,
+          title: 'General',
+          questions: [
+            {
+              id: `q-${jobId}-1-1`,
+              type: 'single', // single-choice
+              label: 'Do you have prior experience in this role?',
+              options: ['Yes', 'No'],
+              required: true
+            },
+            {
+              id: `q-${jobId}-1-2`,
+              type: 'short',
+              label: 'If yes, how many years?',
+              required: false,
+              showIf: { questionId: `q-${jobId}-1-1`, operator: '===', value: 'Yes' },
+              validators: { numeric: true, min: 0, max: 50 }
+            }
+          ]
+        },
+        {
+          id: `sec-${jobId}-2`,
+          title: 'Technical',
+          questions: [
+            {
+              id: `q-${jobId}-2-1`,
+              type: 'multi',
+              label: 'Which of these technologies do you know?',
+              options: ['React', 'Node.js', 'Docker', 'Kubernetes'],
+              required: true
+            },
+            {
+              id: `q-${jobId}-2-2`,
+              type: 'long',
+              label: 'Describe a problem you solved recently.',
+              required: false,
+              validators: { maxLength: 500 }
+            }
+          ]
+        }
+      ];
+
+      sampleAssessments.push({
+        jobId,
+        title: `Assessment for job ${jobId}`,
+        sections,
+        updatedAt: now
+      });
+    }
+
+    await db.assessments.bulkAdd(sampleAssessments);
+    console.log('seeded assessments');
+  } catch (err) {
+    console.error('error seeding assessments', err);
+  }
+}
 
 export const jobs = [
   { title: "Frontend Developer", slug: "frontend-developer", status: "active", tags: ["React", "JavaScript", "UI", "CSS"], order: 1 },
@@ -168,6 +242,4 @@ export async function seedCandidates() {
         console.error("Error while seeding the DB:", err);
     }
 }
-
-
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRole } from "../../context/useRole"
 import axios from 'axios'
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
   TouchSensor
@@ -12,7 +12,8 @@ import { JobRow } from '../../components/jobs/jobRow.jsx'
 let reorderId = 0;
 
 export function Jobs() {
-  const { role, setRole } = useRole();
+  // const { role, setRole } = useRole();
+  const {role} = useLocation().state;
   const [jobs, setJobs] = useState([]);
   const [sort, setSort] = useState('asc');
   const [activeJobs, setActiveJobs] = useState(true);
@@ -21,10 +22,12 @@ export function Jobs() {
   const [pageSize, setPageSize] = useState(10);
   const [pageNumber, setPageNumber] = useState(1);
   const [tags, setTags] = useState([]);
+  const [jobTitles,setjobTitles] = useState([]);
   const waitingReorders = useRef([]);
   const pendingReorders = useRef([]);
   const previousJobs = useRef([]);
   const backendSyncJobs = useRef(null);
+  
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -36,6 +39,45 @@ export function Jobs() {
   for (let i = 1; i <= maxPageNumber; i++) { pageNumbers.push(i) }
 
   const allTags = ['React', 'JavaScript', 'UI', 'CSS', 'Node.js', 'API', 'Databases', 'Go', 'SQL', 'Python', 'Visualization', 'Excel', 'TensorFlow', 'AI', 'Data', 'MongoDB', 'AWS', 'Kubernetes', 'DevOps', 'Networking', 'Docker', 'CI/CD', 'Linux', 'HTML', 'Teamwork', 'Testing', 'Automation', 'Selenium', 'Agile', 'Roadmap', 'Leadership', 'Communication', 'ETL', 'Pipelines', 'Figma', 'Prototyping', 'Accessibility', 'React Native', 'Android', 'iOS', 'Security', 'Monitoring', 'Network', 'Threat Detection', 'TypeScript', 'Performance', 'PostgreSQL', 'Microservices', 'Architecture', 'Scalability', 'Deep Learning', 'Research', 'Routers', 'TCP/IP', 'Terraform', 'MySQL', 'Backup', 'Documentation', 'Writing', 'Editing', 'Unity', 'C#', '3D', 'Graphics', 'Customer Support', 'Troubleshooting', 'ML', 'Statistics', 'Planning', 'Solidity', 'Ethereum', 'Smart Contracts', 'Web3', 'C++', 'IoT', 'Microcontrollers', 'Hardware', 'Cloud', 'Pandas', 'Support'];
+
+  const allJobtitles = [
+  "Frontend Developer",
+  "Backend Engineer",
+  "Data Analyst",
+  "Machine Learning Engineer",
+  "Full Stack Developer",
+  "Cloud Architect",
+  "DevOps Engineer",
+  "Software Engineer Intern",
+  "QA Tester",
+  "Product Manager",
+  "Data Engineer",
+  "UI/UX Designer",
+  "Mobile App Developer",
+  "System Administrator",
+  "Security Analyst",
+  "Senior Frontend Developer",
+  "Senior Backend Developer",
+  "Senior Backend Engineer",
+  "Senior Frontend Engineer",
+  "AI Researcher",
+  "Network Engineer",
+  "Senior DevOps Engineer",
+  "Database Administrator",
+  "Technical Writer",
+  "Game Developer",
+  "Support Engineer",
+  "Senior Data Scientist",
+  "Project Coordinator",
+  "Blockchain Developer",
+  "Embedded Systems Engineer",
+  "Automation Engineer",
+  "Senior Software Architect",
+  "Data Analyst",
+  "Cloud Support Engineer",
+  "Senior Cloud Engineer"
+];
+
 
   function archiveStateConsistency(jobid, newStatus) {
     if (activeJobs && archivedJobs) {
@@ -88,8 +130,20 @@ export function Jobs() {
     }
   }
 
+  function handleJobTitleClick(jobTitle){
+    if(jobTitles.includes(jobTitle)){
+      setjobTitles(jobTitles.filter(eachjobtitle=>eachjobtitle!=jobTitle))
+    }else{
+      setjobTitles(Array.from(new Set([...jobTitles,jobTitle])))
+    }
+  }
+
   function handleTagCancel(selectedTag) {
     setTags(tags.filter(tag => tag != selectedTag))
+  }
+
+  function handleJobTitleCancel(selectedJobTitle){
+    setjobTitles(jobTitles.filter(jobTitle=>jobTitle!=selectedJobTitle))
   }
 
   function statusArray() {
@@ -177,6 +231,7 @@ export function Jobs() {
       params: {
         'status': statusArray(),
         'tags': tags,
+        'title':jobTitles.length?jobTitles:allJobtitles,
         'sort': sort,
         'pageNumber': pageNumber,
         'pageSize': pageSize,
@@ -190,7 +245,7 @@ export function Jobs() {
         setJobs(res.data.records);
       })
       .catch(err => { console.log("error when trying to get data: ", err) })
-  }, [activeJobs, archivedJobs, tags, pageNumber, pageSize, sort])
+  }, [activeJobs, archivedJobs, tags, pageNumber, pageSize, sort,jobTitles])
 
   return (
     <div className="flex justify-center bg-gray-50 min-h-screen py-10 text-gray-800">
@@ -262,6 +317,36 @@ export function Jobs() {
             ))}
           </select>
         </div>
+
+        <div className="flex flex-col items-center gap-3">
+          <p className="font-semibold text-gray-700">Job Title</p>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {jobTitles.map(selectedJobTitle => (
+              <div
+                className="bg-blue-500 px-3 py-[2px] text-white rounded-xl flex gap-2 items-center text-sm shadow-sm"
+                key={selectedJobTitle}
+              >
+                <p>{selectedJobTitle}</p>
+                <button onClick={() => { handleJobTitleCancel(selectedJobTitle) }}>
+                  <img src="/close.png" width={30} height={30} />
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <select
+            onChange={(e) => { handleJobTitleClick(e.target.value) }}
+            className="border rounded-lg px-3 py-1 w-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 bg-gray-50"
+          >
+            <option value="select tags">--Select tags--</option>
+            {allJobtitles.filter(jobTitle => !jobTitles.includes(jobTitle)).map(jtitle => (
+              <option className="flex gap-2" key={jtitle}>
+                {jtitle}
+              </option>
+            ))}
+          </select>
+        </div>
+
       </div>
 
       <div className="flex flex-col items-center justify-center self-start w-[80%] px-10 mb-20">
@@ -291,7 +376,20 @@ export function Jobs() {
           />
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        {
+          role=='jobseeker'
+          ?<ul className="flex flex-col gap-6 border p-5 w-[90%] rounded-2xl bg-white shadow-md items-center">
+              {
+                jobs.length
+                  ? jobs.map(job => (
+                    <JobRow key={job.jobid} job={job} handleStatusClickFunction={handleStatusClick} />
+                  ))
+                  : <div className="text-gray-500 py-6">
+                    No jobs with given filters exist. Try changing filters to view jobs.
+                  </div>
+              }
+            </ul>
+          :<DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={jobs.map(job => job.jobid)} strategy={verticalListSortingStrategy}>
             <ul className="flex flex-col gap-6 border p-5 w-[90%] rounded-2xl bg-white shadow-md items-center">
               {
@@ -306,6 +404,8 @@ export function Jobs() {
             </ul>
           </SortableContext>
         </DndContext>
+        }
+        
 
         <div className="flex gap-2 mt-5">
           {

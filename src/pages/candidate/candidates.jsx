@@ -168,7 +168,7 @@ export function Candidates() {
               ? searchOptions.length === 0
                 ? "No matching candidates"
                 : `${searchOptions.length} matching candidates`
-              : ""}
+              : `${candidates.length} matching candidates`}
           </div>
         </div>
 

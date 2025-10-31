@@ -1,62 +1,56 @@
 import { Link } from "react-router-dom";
-import { useRole } from "../context/useRole";
 
-export function Login() {
-  let { setRole } = useRole();
-
+export function Recruiter() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-100 via-indigo-100 to-purple-100">
-      {/* App Title */}
+      {/* Title */}
       <h1 className="text-5xl font-extrabold text-gray-800 mb-12 drop-shadow-md">
-        Talent Flow
+        Recruiter Dashboard
       </h1>
 
-      {/* Role Selection Cards */}
+      {/* Options Section */}
       <div className="flex flex-wrap gap-8 justify-center">
-        {/* Job Seeker Card */}
+        {/* Job Board Card */}
         <Link
           to="/jobs"
-          onClick={() => {setRole("jobseeker")} }
-          state={{'role':'jobseeker'}}
+          state={{ role: "recruiter" }}
           className="group bg-white shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl p-6 w-[320px] flex flex-col items-center border border-gray-200 hover:border-blue-500"
         >
           <img
-            src="/jobseeker.png"
-            alt="Job Seeker"
+            src="/jobs.jpg"
+            alt="Job Board"
             className="rounded-xl w-60 h-52 object-cover mb-4 group-hover:scale-105 transition-transform duration-300"
           />
           <p className="font-semibold text-2xl text-gray-800 group-hover:text-blue-600 transition-colors duration-300 text-center">
-            Employee / Job Seeker
+            Job Board
           </p>
           <p className="text-sm text-gray-500 mt-2 text-center">
-            Browse openings and apply for your next career move.
+            Create, edit, and manage job openings with ease.
           </p>
         </Link>
 
-        {/* Recruiter Card */}
+        {/* Candidates List Card */}
         <Link
-          to="/recruiter"
-          onClick={() => setRole("recruiter")}
-          
+          to="/candidates"
           className="group bg-white shadow-lg hover:shadow-2xl transition-all duration-300 rounded-2xl p-6 w-[320px] flex flex-col items-center border border-gray-200 hover:border-purple-500"
         >
           <img
-            src="/recruiter.webp"
-            alt="Recruiter"
+            src="/candidates.webp"
+            alt="Candidates List"
             className="rounded-xl w-60 h-52 object-cover mb-4 group-hover:scale-105 transition-transform duration-300"
           />
           <p className="font-semibold text-2xl text-gray-800 group-hover:text-purple-600 transition-colors duration-300 text-center">
-            Employer / Recruiter
+            Candidates
           </p>
           <p className="text-sm text-gray-500 mt-2 text-center">
-            Post jobs and find top talent effortlessly.
+            Review and track applicants efficiently.
           </p>
         </Link>
       </div>
 
       {/* Footer */}
       <p className="mt-12 text-gray-500 text-sm">
-        © {new Date().getFullYear()} Talent Flow — Empowering careers & hiring.
+        © {new Date().getFullYear()} Talent Flow — Empowering recruiters & careers.
       </p>
     </div>
   );

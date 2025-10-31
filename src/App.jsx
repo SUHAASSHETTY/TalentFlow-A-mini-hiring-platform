@@ -10,6 +10,7 @@ import { CandidateTimeline } from './pages/candidate/candidateTimeline';
 import { AssessmentBuilderPage } from './pages/assessment/AssessmentBuilderPage';
 import { AssessmentRuntimePage } from './pages/assessment/AssessmentRuntimePage';
 import AssessmentBuilderDemo from './components/assessment/AssessmentBuilderDemo';
+import { Recruiter } from './pages/Recruiter';
 
 
 
@@ -20,6 +21,7 @@ function App() {
     <>
       <Routes>
         <Route path='/' element={<Login/>}/>
+        <Route path='/recruiter' element={<Recruiter/>}/>
         <Route path='/jobs' element={<Jobs/>}/>
         <Route path='/jobadd' element={<JobAdd/>}/>
         <Route path='/editjob/:id' element={<JobEdit/>}/>

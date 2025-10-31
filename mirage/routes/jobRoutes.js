@@ -24,7 +24,7 @@ export default function JobRoutes(server){
     })
 
     server.get('/jobs',async (schema,request)=>{
-        const {status:statusArray,tags:tagsArray,pageSize,pageNumber,sort} = request.queryParams
+        const {status:statusArray,tags:tagsArray,title,pageSize,pageNumber,sort} = request.queryParams
         try{
             let jobs;
             if(tagsArray && tagsArray.length){
@@ -35,6 +35,11 @@ export default function JobRoutes(server){
                 // console.log("after set:",jobs)
             }else{
                 jobs = await db.jobs.where('status').anyOf(statusArray).toArray();
+            }
+
+            console.log("title at backend:",title);
+            if(title.length){
+                jobs = jobs.filter(job => title.includes(job.title))
             }
 
             //sort 
@@ -68,13 +73,25 @@ export default function JobRoutes(server){
 
     server.post('/jobadd', async(schema,request)=>{
         let newJob = JSON.parse(request.requestBody);
+        let allslugs = await db.jobs.toArray();
+        allslugs=allslugs.map(job => job.slug);
+        if(allslugs.includes(newJob.slug)){
+            return new Response(400,{},{ error: "slug already exists for another job.change the slug" })
+        }
         db.jobs.add(newJob);
         return newJob;
+        
     })
 
     server.patch('/jobs/:id',async(schema,request)=>{
         let updateJobId = Number(request.params.id);
         let updatedJob = JSON.parse(request.requestBody);
+
+        let allslugs = await db.jobs.toArray();
+        allslugs=allslugs.map(job => job.slug);
+        if(allslugs.includes(updatedJob?.slug)){
+            return new Response(400,{},{ error: "slug already exists for another job.change the slug" })
+        }
         // console.log("updatedJob: ",updatedJob);
         delete updateJobId['jobid'];
         

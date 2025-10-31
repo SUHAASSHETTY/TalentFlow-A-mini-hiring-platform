@@ -6,6 +6,8 @@ export function JobEdit() {
   const [name, setName] = useState("");
   const [tags, setTags] = useState([]);
   const [status, setStatus] = useState("active");
+  const [slug, setSlug] = useState("");
+  const [slugError, setSlugError] = useState(false);
   const { id: jobid } = useParams();
 
   const allTags = [
@@ -22,6 +24,20 @@ export function JobEdit() {
     "Hardware", "Cloud", "Pandas", "Support"
   ];
 
+  // Auto-generate slug whenever name changes
+  useEffect(() => {
+    if (name.trim()) {
+      const generatedSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/(^-|-$)+/g, "");
+      setSlug(generatedSlug);
+      setSlugError(false);
+    } else {
+      setSlug("");
+    }
+  }, [name]);
+
   function handleTagClick(tag) {
     if (tags.includes(tag)) {
       setTags(tags.filter((eachtag) => eachtag !== tag));
@@ -34,12 +50,19 @@ export function JobEdit() {
     setTags(tags.filter((tag) => tag !== selectedTag));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
-    axios
-      .patch(`/api/jobs/${jobid}`, { name, tags, status })
-      .then((res) => console.log("Job updated successfully:", res))
-      .catch((err) => console.log("Error updating job:", err));
+    try {
+      const res = await axios.patch(`/api/jobs/${jobid}`, { name, tags, status, slug });
+      console.log("Job updated successfully:", res.data);
+      alert("Job updated successfully!");
+      setSlugError(false);
+    } catch (err) {
+      if (err.response?.data?.error === "slug already exists for another job.change the slug") {
+        setSlugError(true);
+      }
+      console.error("Error updating job:", err);
+    }
   }
 
   useEffect(() => {
@@ -50,6 +73,7 @@ export function JobEdit() {
         setName(job?.title || "");
         setTags(job?.tags || []);
         setStatus(job?.status || "active");
+        setSlug(job?.slug || "");
       })
       .catch((err) => console.log("Error fetching job:", err));
   }, [jobid]);
@@ -73,6 +97,24 @@ export function JobEdit() {
             placeholder="Enter job title"
             required
           />
+        </div>
+
+        {/* Slug (auto-generated) */}
+        <div className="flex flex-col gap-2">
+          <label className="text-gray-700 font-semibold">Slug (auto-generated)</label>
+          <input
+            type="text"
+            value={slug}
+            readOnly
+            className={`border rounded-xl px-3 py-2 text-gray-700 bg-gray-100 ${
+              slugError ? "border-red-500" : "border-gray-300"
+            }`}
+          />
+          {slugError && (
+            <p className="text-red-600 text-sm font-medium">
+              Slug already exists for another job. Please change the job title.
+            </p>
+          )}
         </div>
 
         {/* Status Dropdown */}

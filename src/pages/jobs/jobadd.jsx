@@ -1,11 +1,14 @@
 import axios from "axios";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export function JobAdd() {
   const [name, setName] = useState("");
   const [tags, setTags] = useState([]);
+  const [slug, setSlug] = useState("");
+  const [slugError, setSlugError] = useState(false);
   const [status, setStatus] = useState("active");
 
+  // All possible tags
   const allTags = [
     "React", "JavaScript", "UI", "CSS", "Node.js", "API", "Databases", "Go", "SQL", "Python",
     "Visualization", "Excel", "TensorFlow", "AI", "Data", "MongoDB", "AWS", "Kubernetes",
@@ -20,6 +23,20 @@ export function JobAdd() {
     "Hardware", "Cloud", "Pandas", "Support"
   ];
 
+  // Auto-generate slug whenever name changes
+  useEffect(() => {
+    if (name.trim()) {
+      const generatedSlug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-") // replace spaces/symbols with dashes
+        .replace(/(^-|-$)+/g, ""); // trim leading/trailing dashes
+      setSlug(generatedSlug);
+      setSlugError(false); // reset slug error if name changes
+    } else {
+      setSlug("");
+    }
+  }, [name]);
+
   function handleTagClick(tag) {
     if (tags.includes(tag)) {
       setTags(tags.filter((t) => t !== tag));
@@ -32,17 +49,29 @@ export function JobAdd() {
     setTags(tags.filter((tag) => tag !== selectedTag));
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+
     if (!name.trim()) {
       alert("Please enter a job title before submitting.");
       return;
     }
 
-    axios
-      .post("/api/jobadd", { title: name, tags, status })
-      .then((res) => console.log("Job added successfully:", res))
-      .catch((err) => console.log("Error when adding job:", err));
+    try {
+      const res = await axios.post("/api/jobadd", { title: name, tags, status, slug });
+      console.log("Job added successfully:", res.data);
+      alert("Job added successfully!");
+      setName("");
+      setTags([]);
+      setSlug("");
+      setSlugError(false);
+      setStatus("active");
+    } catch (err) {
+      if (err.response?.data?.error === "slug already exists for another job.change the slug") {
+        setSlugError(true);
+      }
+      console.error("Error when adding job:", err);
+    }
   }
 
   return (
@@ -64,6 +93,24 @@ export function JobAdd() {
             placeholder="Enter job title"
             required
           />
+        </div>
+
+        {/* Slug (auto-generated) */}
+        <div className="flex flex-col gap-2">
+          <label className="text-gray-700 font-semibold">Slug (auto-generated)</label>
+          <input
+            type="text"
+            value={slug}
+            readOnly
+            className={`border rounded-xl px-3 py-2 text-gray-700 bg-gray-100 ${
+              slugError ? "border-red-500" : "border-gray-300"
+            }`}
+          />
+          {slugError && (
+            <p className="text-red-600 text-sm font-medium">
+              Slug already exists for another job. Please change the job title.
+            </p>
+          )}
         </div>
 
         {/* Status Dropdown */}
